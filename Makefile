@@ -10,7 +10,7 @@ help: ## Show this help message
 
 up: ## Start the observability stack
 	@echo "🚀 Starting Claude Code observability stack..."
-	docker compose up -d
+	docker-compose up -d
 	@echo "✅ Stack started!"
 	@echo "📊 Grafana: http://localhost:3000 (admin/admin)"
 	@echo "🔍 Prometheus: http://localhost:9090"
@@ -19,29 +19,29 @@ up: ## Start the observability stack
 
 down: ## Stop the observability stack
 	@echo "🛑 Stopping Claude Code observability stack..."
-	docker compose down
+	docker-compose down
 	@echo "✅ Stack stopped!"
 
 restart: ## Restart the observability stack
 	@echo "🔄 Restarting Claude Code observability stack..."
-	docker compose restart
+	docker-compose restart
 	@echo "✅ Stack restarted!"
 
 logs: ## Show logs from all services
-	docker compose logs -f
+	docker-compose logs -f
 
 logs-collector: ## Show OpenTelemetry collector logs
-	docker compose logs -f otel-collector
+	docker-compose logs -f otel-collector
 
 logs-prometheus: ## Show Prometheus logs
-	docker compose logs -f prometheus
+	docker-compose logs -f prometheus
 
 logs-grafana: ## Show Grafana logs
-	docker compose logs -f grafana
+	docker-compose logs -f grafana
 
 clean: ## Clean up containers and volumes
 	@echo "🧹 Cleaning up..."
-	docker compose down -v
+	docker-compose down -v
 	docker system prune -f
 	@echo "✅ Cleanup complete!"
 
@@ -51,8 +51,8 @@ clean: ## Clean up containers and volumes
 
 validate-config: ## Validate all configuration files
 	@echo "✅ Validating configurations..."
-	@echo "📋 Checking docker compose.yml..."
-	docker compose config > /dev/null && echo "✅ docker compose.yml is valid"
+	@echo "📋 Checking docker-compose.yml..."
+	docker-compose config > /dev/null && echo "✅ docker-compose.yml is valid"
 	@echo "📋 Checking collector-config.yaml..."
 	@if command -v otelcol-contrib >/dev/null 2>&1; then \
 		otelcol-contrib --config-validate --config=collector-config.yaml; \
@@ -64,7 +64,7 @@ validate-config: ## Validate all configuration files
 status: ## Show stack status
 	@echo "📊 Claude Code Observability Stack Status"
 	@echo "==========================================="
-	@docker compose ps
+	@docker-compose ps
 	@echo ""
 	@echo "🌐 Service URLs:"
 	@echo "  Grafana:      http://localhost:3000"

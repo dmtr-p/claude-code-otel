@@ -83,7 +83,7 @@ Use clear, descriptive commit messages:
 make validate-config
 
 # Test individual components
-docker compose config  # Validate docker-compose.yml
+docker-compose config  # Validate docker-compose.yml
 curl -f http://localhost:9090/-/healthy  # Test Prometheus
 curl -f http://localhost:3000/api/health  # Test Grafana
 ```
