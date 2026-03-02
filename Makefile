@@ -12,9 +12,7 @@ up: ## Start the observability stack
 	@echo "🚀 Starting Claude Code observability stack..."
 	docker-compose up -d
 	@echo "✅ Stack started!"
-	@echo "📊 Grafana: http://localhost:3000 (admin/admin)"
-	@echo "🔍 Prometheus: http://localhost:9090"
-	@echo "📄 Loki: http://localhost:3100"
+	@echo "📊 Grafana: https://grafana.$${DOMAIN:-<your-domain>} (Google SSO)"
 
 
 down: ## Stop the observability stack
@@ -67,11 +65,9 @@ status: ## Show stack status
 	@docker-compose ps
 	@echo ""
 	@echo "🌐 Service URLs:"
-	@echo "  Grafana:      http://localhost:3000"
-	@echo "  Prometheus:   http://localhost:9090"
-	@echo "  Loki:         http://localhost:3100"
-
-	@echo "  Collector:    http://localhost:4317 (gRPC), http://localhost:4318 (HTTP)"
+	@echo "  Grafana:    https://grafana.$${DOMAIN:-<your-domain>}"
+	@echo "  OTLP gRPC:  https://otel.$${DOMAIN:-<your-domain>}:4317"
+	@echo "  OTLP HTTP:  https://otel.$${DOMAIN:-<your-domain>}:4318"
 
 setup-claude: ## Display Claude Code telemetry setup instructions
 	@echo "🤖 Claude Code Telemetry Setup"
@@ -82,12 +78,9 @@ setup-claude: ## Display Claude Code telemetry setup instructions
 	@echo "export CLAUDE_CODE_ENABLE_TELEMETRY=1"
 	@echo "export OTEL_METRICS_EXPORTER=otlp"
 	@echo "export OTEL_LOGS_EXPORTER=otlp"
-	@echo "export OTEL_EXPORTER_OTLP_PROTOCOL=grpc"
-	@echo "export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317"
-	@echo ""
-	@echo "For debugging (faster export intervals):"
-	@echo "export OTEL_METRIC_EXPORT_INTERVAL=10000"
-	@echo "export OTEL_LOGS_EXPORT_INTERVAL=5000"
+	@echo "export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf"
+	@echo "export OTEL_EXPORTER_OTLP_ENDPOINT=https://otel.$${DOMAIN:-<your-domain>}:4318"
+	@echo 'export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $$(echo -n otel:<your-password> | base64)"'
 	@echo ""
 	@echo "Then run: claude"
 

@@ -54,46 +54,46 @@ Claude Code → OpenTelemetry Collector → Prometheus (metrics) + Loki (events/
 
 ### Components
 
-| Service | Purpose | Port | UI |
-|---------|---------|------|----| 
-| **OpenTelemetry Collector** | Metrics/logs ingestion | 4317 (gRPC), 4318 (HTTP) | - |
-| **Prometheus** | Metrics storage & querying | 9090 | http://localhost:9090 |
-| **Loki** | Log aggregation & storage | 3100 | - |
-| **Grafana** | Dashboards & visualization | 3000 | http://localhost:3000 |
+| Service | Purpose | Endpoint |
+|---------|---------|----------|
+| **Traefik** | Reverse proxy, TLS termination | Ports 80, 443, 4317, 4318 |
+| **OpenTelemetry Collector** | Metrics/logs ingestion | `https://otel.<domain>:4317` (gRPC), `:4318` (HTTP) |
+| **Prometheus** | Metrics storage & querying | Internal only |
+| **Loki** | Log aggregation & storage | Internal only |
+| **Grafana** | Dashboards & visualization | `https://grafana.<domain>` (Google SSO) |
 
 ## 🚀 Quick Start
 
-### 1. Start the Stack
+### 1. Configure Environment
 ```bash
-# Start all services
-make up
-
-# Check status
-make status
+cp .env.example .env
+# Edit .env with your domain, Cloudflare tokens, and Google OAuth credentials
 ```
 
-### 2. Configure Claude Code
+### 2. Create OTLP Auth Credentials
 ```bash
-# Enable telemetry
-export CLAUDE_CODE_ENABLE_TELEMETRY=1
+htpasswd -nbB otel <your-password> > otel-htpasswd
+```
 
-# Configure exporters
+### 3. Start the Stack
+```bash
+make up
+```
+
+### 4. Configure Claude Code
+```bash
+export CLAUDE_CODE_ENABLE_TELEMETRY=1
 export OTEL_METRICS_EXPORTER=otlp
 export OTEL_LOGS_EXPORTER=otlp
-export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+export OTEL_EXPORTER_OTLP_ENDPOINT=https://otel.<your-domain>:4318
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(echo -n 'otel:<your-password>' | base64)"
 
-# For debugging (faster export intervals)
-export OTEL_METRIC_EXPORT_INTERVAL=10000
-export OTEL_LOGS_EXPORT_INTERVAL=5000
-
-# Run Claude Code
 claude
 ```
 
 ### 3. Access Dashboards
-- **Grafana**: http://localhost:3000 (admin/admin)
-- **Prometheus**: http://localhost:9090
+- **Grafana**: `https://grafana.<your-domain>` (Google SSO)
 
 > 🖼️ **Visual Guide**: Check out the [Dashboard Screenshots](#-dashboard-screenshots) to see what your dashboards will look like!
 

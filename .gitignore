@@ -11,6 +11,9 @@ build/
 .env.local
 .env.*.local
 
+# Auth credentials
+otel-htpasswd
+
 # IDE and editor files
 .vscode/
 .idea/

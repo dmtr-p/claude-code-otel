@@ -14,7 +14,7 @@ Thank you for your interest in contributing to the Claude Code Observability Sta
 2. Clone your fork: `git clone https://github.com/your-username/claude-code-otel.git`
    - Original repository: `git clone https://github.com/ColeMurray/claude-code-otel.git`
 3. Start the development stack: `make up`
-4. Access Grafana at http://localhost:3000 (admin/admin)
+4. Access Grafana at `https://grafana.<your-domain>` (Google SSO)
 
 ## 📊 How to Contribute
 

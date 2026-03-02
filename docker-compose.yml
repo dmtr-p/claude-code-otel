@@ -3,15 +3,56 @@ networks:
     driver: bridge
 
 services:
+  traefik:
+    image: traefik:v3.6
+    container_name: traefik
+    env_file: .env
+    environment:
+      - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL=${ACME_EMAIL}
+    volumes:
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./otel-htpasswd:/etc/traefik/otel-htpasswd:ro
+      - ${DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock:ro
+      - traefik_certs:/certs
+    ports:
+      - "80:80"
+      - "443:443"
+      - "4317:4317"      # OTLP gRPC (TLS)
+      - "4318:4318"      # OTLP HTTP (TLS)
+    restart: unless-stopped
+    networks:
+      - otel-network
+
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest   # ≈ 50 MB
+    image: otel/opentelemetry-collector-contrib:latest
     container_name: otel-collector
     command: ["--config=/etc/otel/collector-config.yaml"]
     volumes:
       - ./collector-config.yaml:/etc/otel/collector-config.yaml:ro
-    ports:
-      - "4317:4317"      # OTLP gRPC in
-      - "4318:4318"      # OTLP HTTP  in
+    expose:
+      - "4317"
+      - "4318"
+    labels:
+      - "traefik.enable=true"
+      # Basic auth middleware for OTLP endpoints
+      - "traefik.http.middlewares.otel-auth.basicauth.usersfile=/etc/traefik/otel-htpasswd"
+      # OTLP HTTP (port 4318)
+      - "traefik.http.routers.otel-http.rule=Host(`otel.${DOMAIN}`)"
+      - "traefik.http.routers.otel-http.entrypoints=otlp-http"
+      - "traefik.http.routers.otel-http.tls=true"
+      - "traefik.http.routers.otel-http.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.otel-http.middlewares=otel-auth"
+      - "traefik.http.routers.otel-http.service=otel-http"
+      - "traefik.http.services.otel-http.loadbalancer.server.port=4318"
+      # OTLP gRPC (port 4317)
+      - "traefik.http.routers.otel-grpc.rule=Host(`otel.${DOMAIN}`)"
+      - "traefik.http.routers.otel-grpc.entrypoints=otlp-grpc"
+      - "traefik.http.routers.otel-grpc.tls=true"
+      - "traefik.http.routers.otel-grpc.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.otel-grpc.middlewares=otel-auth"
+      - "traefik.http.routers.otel-grpc.service=otel-grpc"
+      - "traefik.http.services.otel-grpc.loadbalancer.server.port=4317"
+      - "traefik.http.services.otel-grpc.loadbalancer.server.scheme=h2c"
     restart: unless-stopped
     networks:
       - otel-network
@@ -45,22 +86,43 @@ services:
     image: grafana/grafana-oss:latest
     container_name: grafana
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_FEATURE_TOGGLES_ENABLE=logsSampleInExplore
+      - GF_SERVER_ROOT_URL=https://grafana.${DOMAIN}
+      # Disable password login
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_AUTH_DISABLE_SIGNOUT_MENU=false
+      # Google OAuth
+      - GF_AUTH_GOOGLE_ENABLED=true
+      - GF_AUTH_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GF_AUTH_GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GF_AUTH_GOOGLE_ALLOWED_DOMAINS=${GOOGLE_ALLOWED_DOMAINS:-}
+      - GF_AUTH_GOOGLE_ALLOWED_EMAILS=${GOOGLE_ALLOWED_EMAILS:-}
+      - GF_AUTH_GOOGLE_SCOPES=openid email profile
+      - GF_AUTH_GOOGLE_AUTO_LOGIN=true
+      # Role mapping (JMESPath expression, see .env.example)
+      - GF_AUTH_GOOGLE_SKIP_ORG_ROLE_SYNC=false
+      - GF_AUTH_GOOGLE_ROLE_ATTRIBUTE_PATH=${GRAFANA_ROLE_MAPPING:-'Viewer'}
+      - GF_USERS_AUTO_ASSIGN_ORG_ROLE=Viewer
     volumes:
       - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
       - ./grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
       - ./claude-code-dashboard.json:/var/lib/grafana/dashboards/claude-code-dashboard.json:ro
       - grafana_data:/var/lib/grafana
-    ports:
-      - "3000:3000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.${DOMAIN}`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls=true"
+      - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
     restart: unless-stopped
     depends_on: [prometheus, loki]
     networks:
       - otel-network
 
 volumes:
+  traefik_certs:
   prometheus_data:
   loki_data:
   grafana_data:
